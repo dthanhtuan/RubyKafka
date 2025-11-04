@@ -159,6 +159,12 @@ GEM
       logger
       mini_portile2 (~> 2.6)
       rake (> 12)
+    karafka-web (0.11.4)
+      erubi (~> 1.4)
+      karafka (>= 2.5.2, < 2.6.0)
+      karafka-core (>= 2.5.0, < 2.6.0)
+      roda (~> 3.68, >= 3.69)
+      tilt (~> 2.0)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     logger (1.7.0)
@@ -266,6 +272,8 @@ GEM
     regexp_parser (2.11.3)
     reline (0.6.2)
       io-console (~> 0.5)
+    roda (3.97.0)
+      rack
     rubocop (1.81.7)
       json (~> 2.3)
       language_server-protocol (~> 3.17.0.2)
@@ -330,6 +338,7 @@ GEM
     thruster (0.1.16)
     thruster (0.1.16-aarch64-linux)
     thruster (0.1.16-x86_64-linux)
+    tilt (2.6.1)
     timeout (0.4.4)
     tsort (0.2.0)
     tzinfo (2.0.6)
@@ -365,6 +374,7 @@ DEPENDENCIES
   debug
   kamal
   karafka (>= 2.5.0)
+  karafka-web (~> 0.11.4)
   puma (>= 5.0)
   rails (~> 8.0.3)
   rubocop-rails-omakase

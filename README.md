@@ -37,6 +37,9 @@ bundle exec karafka server
 {"ping" => "pong"}
 {"ping" => "pong"}
 ```
+## Kafka Web UI
+http://localhost:3000/karafka/dashboard
+
 
 ## Components of Kafka
 ### Producer

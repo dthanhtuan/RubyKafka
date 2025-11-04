@@ -26,6 +26,7 @@ gem "thruster", require: false
 
 # Karafka provides a lightweight framework for building Kafka consumers in Ruby
 gem "karafka", ">= 2.5.0"
+gem "karafka-web", "~> 0.11.4"
 
 # Use Active Storage variants
 # gem "image_processing", "~> 1.2"
@@ -43,4 +44,6 @@ group :development, :test do
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
 end
+
+
 
