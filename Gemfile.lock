@@ -364,7 +364,7 @@ DEPENDENCIES
   brakeman
   debug
   kamal
-  karafka
+  karafka (>= 2.5.0)
   puma (>= 5.0)
   rails (~> 8.0.3)
   rubocop-rails-omakase

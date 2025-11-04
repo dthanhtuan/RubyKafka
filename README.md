@@ -1,3 +1,43 @@
+## Prerequisites
+1. To verify that Apache Kafka is running, run the following command:
+```bash
+docker ps | grep kafka
+```
+2. If it is not running.
+```bash
+cd docker/local/kafka 
+docker-compose up
+```
+
+## Quick Start
+```bash
+bundle exec rails console
+```
+1. To produce test messages, open the development console and enter:`
+```ruby
+Karafka.producer.produce_sync(topic: 'example', payload: { 'ping' => 'pong' }.to_json)
+```
+```bash
+ruby-kafka(dev)> Karafka.producer.produce_sync(topic: 'example', payload: { 'ping' => 'pong' }.to_json)
+[waterdrop-0485e372fb75] Sync producing of a message to 'example' topic took 118.84 ms
+=> #<Rdkafka::Producer::DeliveryReport:0x000077dca3c99990 @error=nil, @label=nil, @offset=0, @partition=0, @topic_name="example">
+```
+
+2. To consume messages, run the following command in a separate terminal:
+```bash
+bundle exec karafka server
+
+[f01618137d18] Polling messages...
+[f01618137d18] Polled 6 messages in 999.58ms
+[f573b01f2bd5] Consume job for ExampleConsumer on example-0 started
+{"ping" => "pong"}
+{"ping" => "pong"}
+{"ping" => "pong"}
+{"ping" => "pong"}
+{"ping" => "pong"}
+{"ping" => "pong"}
+```
+
 ## Components of Kafka
 ### Producer
 - Producers are applications or services that publish (write) messages into Kafka topics.
