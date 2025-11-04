@@ -24,17 +24,39 @@
 - A Kafka cluster is a group of brokers working together.
 - It ensures data replication, fault tolerance, and high availability.
 
-### Offset
+### Offset (index)
 - An offset is a unique ID assigned to each message in a partition.
 - It helps consumers keep track of which messages have been read.
 
-#### Kafka Architecture Diagrams
+### Leader
+- Each partition has one broker acting as the leader.
+- The leader handles all read and write requests for that partition.
+- It is responsible for coordinating with followers to replicate data.
+
+### Follower
+- Followers are brokers that replicate the leader's data for fault tolerance.
+- They stay in sync with the leader but do not handle client requests.
+- If the leader fails, one of the followers can be promoted to become the new leader.
+
+### Zookeeper
+- Zookeeper is a centralized service that manages and coordinates the Kafka brokers.
+- It keeps track of broker metadata, topic configurations, and partition assignments.
+- Leader election for partitions is also managed by Zookeeper.
+- Zookeeper helps maintain the overall health and stability of the Kafka cluster.
+- Zookeeper does not handle message storage or delivery; that is the responsibility of the Kafka brokers.
+- Note: Newer versions of Kafka are moving away from Zookeeper in favor of a built-in consensus mechanism called KRaft (Kafka Raft).
+
+![zookeeper.png](docs/images/zookeeper.png)
+
+## Kafka Architecture Diagrams
+![fundamentals.jpg](docs/images/fundamentals.jpg)
+
 ![kafka_architecture.png](docs/images/kafka_architecture.png)
 
-#### Kafka Partitions Diagram
+## Kafka Partitions Diagram
 ![kafka_partitions.png](docs/images/kafka_partitions.png)
 
-#### Kafka IN-SYNC replicas
+## Kafka IN-SYNC replicas
 ![kafka_in_sync_replicas.png](docs/images/kafka_in_sync_replicas.png)
 
 
