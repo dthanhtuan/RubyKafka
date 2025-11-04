@@ -13,7 +13,7 @@ docker-compose up
 ```bash
 bundle exec rails console
 ```
-1. To produce test messages, open the development console and enter:`
+1. To [produce messages](https://karafka.io/docs/Producing-Messages/), open the development console and enter:`
 ```ruby
 Karafka.producer.produce_sync(topic: 'example', payload: { 'ping' => 'pong' }.to_json)
 ```
@@ -23,7 +23,7 @@ ruby-kafka(dev)> Karafka.producer.produce_sync(topic: 'example', payload: { 'pin
 => #<Rdkafka::Producer::DeliveryReport:0x000077dca3c99990 @error=nil, @label=nil, @offset=0, @partition=0, @topic_name="example">
 ```
 
-2. To consume messages, run the following command in a separate terminal:
+2. To [consume messages](https://karafka.io/docs/Consuming-Messages/), run the following command in a separate terminal:
 ```bash
 bundle exec karafka server
 
@@ -103,7 +103,7 @@ http://localhost:3000/karafka/dashboard
 ![kafka_in_sync_replicas.png](docs/images/kafka_in_sync_replicas.png)
 
 
-## Comsumer Groups
+## Consumer Groups
 A consumer group is a set of consumers that work together to process a topic.
 - Each partition is consumed by exactly one consumer in the group.
 - If you have more consumers than partitions, some consumers will stay idle.
@@ -126,3 +126,7 @@ A consumer group is a set of consumers that work together to process a topic.
 - The rest are marked as idle.
 - This happens because a partition cannot be consumed by more than one consumer in the same group.
 - So, extra consumers simply remain idle and do not get any data.
+
+### [Producer Shutdown](https://karafka.io/docs/Producing-Messages/#producer-shutdown)
+Before shutting down the Karafka producer in processes such as Puma, Sidekiq, or rake tasks, make sure to call the #close method on the producer.
+This is because the `#close` method ensures that any pending messages in the producer buffer are flushed to the Kafka broker before shutting down the producer.
