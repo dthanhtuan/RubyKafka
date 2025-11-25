@@ -37,6 +37,220 @@ bundle exec karafka server
 {"ping" => "pong"}
 {"ping" => "pong"}
 ```
+
+## How Karafka Producer Works
+
+### Producer Architecture
+Karafka uses **WaterDrop** as its producer library. The producer is configured and initialized when the Karafka application starts in `karafka.rb`.
+
+### Producing Messages Step-by-Step
+
+1. **Producer Initialization**
+   - The producer is configured in `karafka.rb` with connection settings like `bootstrap.servers`
+   - `Karafka.producer` returns a singleton WaterDrop producer instance
+   - The producer maintains a connection pool to Kafka brokers
+
+2. **Sending a Message**
+   ```ruby
+   Karafka.producer.produce_sync(
+     topic: 'example',           # Target topic name
+     payload: { 'ping' => 'pong' }.to_json,  # Message content (must be string or binary)
+     key: 'optional_key',        # Optional: determines partition routing
+     partition: 0                # Optional: specific partition (otherwise determined by key or round-robin)
+   )
+   ```
+
+3. **Message Flow**
+   - **Serialization**: The payload is serialized (typically to JSON)
+   - **Partition Selection**: 
+     - If `partition` is specified → goes to that partition
+     - If `key` is provided → Kafka hashes the key to determine partition
+     - If neither → round-robin distribution across partitions
+   - **Broker Connection**: Producer connects to the leader broker for that partition
+   - **Acknowledgment**: 
+     - `produce_sync`: Blocks until broker acknowledges receipt
+     - `produce_async`: Returns immediately, handles delivery asynchronously
+
+4. **Delivery Report**
+   - Returns `Rdkafka::Producer::DeliveryReport` containing:
+     - `offset`: Position in the partition where message was stored
+     - `partition`: Which partition received the message
+     - `topic_name`: Confirmation of the topic
+     - `error`: Any error that occurred (nil on success)
+
+### Producer Methods
+
+- **`produce_sync`**: Synchronous - waits for broker acknowledgment (slower but guaranteed)
+- **`produce_async`**: Asynchronous - fire-and-forget (faster but requires error handling via callbacks)
+- **`produce_many_sync`**: Batch synchronous production for multiple messages
+- **`produce_many_async`**: Batch asynchronous production
+
+### Producer Shutdown
+Before shutting down, always call `Karafka.producer.close` to flush pending messages in the buffer.
+
+---
+
+## How Karafka Consumer Works
+
+### Consumer Architecture
+Karafka consumers are Ruby classes that inherit from `ApplicationConsumer` (which inherits from `Karafka::BaseConsumer`).
+
+### Consumer Routing - How Karafka Knows Which Consumer to Use
+
+The magic happens in **`karafka.rb`** routing configuration:
+
+```ruby
+# karafka.rb
+routes.draw do
+  topic :example do
+    consumer ExampleConsumer  # This maps the 'example' topic to ExampleConsumer class
+  end
+  
+  topic :user_events do
+    consumer UserEventsConsumer  # Different topic → different consumer
+  end
+end
+```
+
+**Key Points:**
+- Each `topic` block defines a subscription
+- The `consumer` method explicitly maps the topic name to a consumer class
+- **Topic names must be SPECIFIC** (e.g., `'user_events'`, `'example'`) - you cannot use wildcards like `'user_*'`
+- When Karafka server starts, it reads this routing table and subscribes to all defined topics
+- Incoming messages from each topic are automatically routed to their configured consumer
+
+#### Topic Patterns (Regex Matching) - Karafka Pro Feature ⭐
+
+If you need to match multiple topics dynamically using regex patterns (e.g., `user_*`), this is available in **[Karafka Pro](https://karafka.io/docs/Pro/)** (commercial version):
+
+```ruby
+# Karafka Pro only - requires license
+routes.draw do
+  # Match any topic starting with "user_"
+  pattern(/^user_.*/) do
+    consumer UserEventsConsumer
+  end
+  
+  # Named pattern for better readability
+  pattern('analytics_topics', /^analytics_.*/) do
+    consumer AnalyticsConsumer
+  end
+end
+```
+
+**Pattern Features:**
+- Use Ruby regex to match multiple topics dynamically
+- Automatically subscribes to new topics matching the pattern
+- Useful for multi-tenant systems or dynamic topic creation
+- Can be named or anonymous (auto-generated name based on regex)
+- **Note**: Requires Karafka Pro license
+
+**OSS (Open Source) Version:**
+- Must define each topic explicitly by name
+- No wildcard or regex support
+- Example: Define `topic :user_events`, `topic :user_analytics` separately
+
+### Consumer Lifecycle
+
+1. **Server Startup**
+   ```bash
+   bundle exec karafka server
+   ```
+   - Karafka reads `karafka.rb` routing configuration
+   - Subscribes to all defined topics with the configured `group_id`
+   - Connects to Kafka brokers specified in `bootstrap.servers`
+   - Starts polling loop
+
+2. **Polling Messages**
+   - Karafka continuously polls Kafka brokers for new messages
+   - Default poll interval: ~1 second
+   - Fetches messages in batches for efficiency
+
+3. **Message Consumption**
+   ```ruby
+   class ExampleConsumer < ApplicationConsumer
+     def consume
+       messages.each do |message|
+         puts message.payload      # Access message content
+         puts message.offset       # Message offset in partition
+         puts message.partition    # Which partition it came from
+         puts message.key          # Message key (if any)
+         puts message.headers      # Message headers (metadata)
+       end
+     end
+   end
+   ```
+
+4. **Routing Logic**
+   - Karafka polls `example` topic
+   - Finds routing: `topic :example → consumer ExampleConsumer`
+   - Instantiates `ExampleConsumer` (or reuses if `consumer_persistence: true`)
+   - Calls `ExampleConsumer#consume` with the batch of messages
+   - Messages are available via the `messages` method
+
+5. **Offset Commit**
+   - After successful consumption, Karafka automatically commits the offset
+   - Kafka tracks which messages this consumer group has processed
+   - On restart, consumption resumes from the last committed offset
+
+### Consumer Group Coordination
+
+```ruby
+# karafka.rb
+config.group_id = 'YOUR_APP_NAME_consumer'
+```
+
+- **`group_id`**: Identifies this consumer group to Kafka
+- Multiple instances with the same `group_id` share partition consumption
+- Each partition is consumed by only one consumer instance in the group
+- Kafka handles partition rebalancing when consumers join/leave
+
+### Consumer Methods
+
+- **`consume`**: Main method called for each batch of messages (required)
+- **`messages`**: Access the batch of messages from Kafka
+- **`revoked`**: Called when partitions are revoked during rebalancing
+- **`shutdown`**: Called when Karafka server stops (cleanup logic)
+
+### Message Object Properties
+
+```ruby
+message.payload      # The message content (string)
+message.raw_payload  # Raw binary payload
+message.offset       # Unique ID within partition
+message.partition    # Partition number
+message.key          # Optional routing key
+message.headers      # Hash of metadata headers
+message.timestamp    # When message was produced
+message.topic        # Topic name
+```
+
+### Consumer Persistence
+
+```ruby
+config.consumer_persistence = !Rails.env.development?
+```
+
+- **`true`** (production): Reuses consumer instances for performance
+- **`false`** (development): Recreates consumers each batch for code reload
+
+### Error Handling
+
+If `consume` raises an exception:
+- Karafka pauses consumption of that partition
+- Error is logged
+- You can subscribe to `error.occurred` events in `karafka.rb` for custom error tracking
+- Configure retry behavior and dead letter queue (DLQ) strategies as needed
+
+---
+
+## Summary: Producer → Kafka → Consumer Flow
+
+1. **Producer** → Serializes payload → Sends to Kafka broker → Gets delivery confirmation
+2. **Kafka Broker** → Stores message in topic partition → Assigns offset
+3. **Consumer** → Polls topic → Routes via `karafka.rb` mapping → Invokes consumer class → Processes messages → Commits offset
+
+**Routing Key**: The `routes.draw` block in `karafka.rb` is the central configuration that maps topics to consumer classes.
 ## Kafka Web UI
 http://localhost:3000/karafka/dashboard
 
