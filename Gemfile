@@ -26,7 +26,7 @@ gem "thruster", require: false
 
 # Karafka provides a lightweight framework for building Kafka consumers in Ruby
 gem "karafka", ">= 2.5.0"
-gem "karafka-web", "~> 0.11.4"
+gem "karafka-web", "~> 0.11.5"
 
 # Use Active Storage variants
 # gem "image_processing", "~> 1.2"
